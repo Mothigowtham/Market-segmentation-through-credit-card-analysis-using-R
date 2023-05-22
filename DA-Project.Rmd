@@ -1,0 +1,612 @@
+---
+title: "Project"
+author: "Mothi Gowtham Ashok Kumar"
+date: "`r Sys.Date()`"
+output:
+  word_document: default
+  pdf_document: default
+always_allow_html: true
+---
+
+**1. IMPORTING R PACKAGES**
+```{r}
+
+
+set.seed(123)
+
+
+library(tidyverse)
+library(kableExtra)
+library(skimr)
+library(factoextra)
+library(hopkins)
+library(clValid)
+library(NbClust)
+library(mclust)
+library(cowplot)
+library(fpc)
+library(corrplot)
+library(FactoMineR)
+library(ggiraphExtra)    
+library(GGally)         
+library(caret)          
+library(ggrepel)
+library(stringr)
+
+#install.packages('fpc')
+```
+
+
+**2 DATA PREPARATION**
+
+**2.1 Data Import**
+```{r}
+
+df <- read.csv("C:/Users/mothi/OneDrive - Indiana University/Documents/Semester 2/DA/Project/CC GENERAL.csv", header = T, row.names = 1) #To specify column 1 as row name
+head(df)
+names(df)
+
+```
+
+```{r}
+
+nrow(df)
+ncol(df)
+
+```
+
+**2.2 Data Description**
+
+
+```{r}
+
+Variables <- c("CUSTID", "BALANCE", "BALANCEFREQUENCY", "PURCHASES", "ONEOFFPURCHASES", "INSTALLMENTSPURCHASES", "CASHADVANCE",
+               "PURCHASESFREQUENCY", "ONEOFFPURCHASESFREQUENCY", "PURCHASESINSTALLMENTSFREQUENCY", "CASHADVANCEFREQUENCY", 
+               "CASHADVANCETRX","PURCHASESTRX", "CREDITLIMIT", "PAYMENTS", "MINIMUM_PAYMENTS", "PRCFULLPAYMENT", "TENURE")
+
+Description <- c("Identification of Credit Card holder (Categorical)",
+                 "Balance amount left in their account to make purchases",
+                 "How frequently the Balance is updated, score between 0 and 1 (1 = frequently updated, 0 = not frequently updated)",
+                 "Amount of purchases made from account",
+                 "Maximum purchase amount done in one-go",
+                 "Amount of purchase done in installment",
+                 "Cash in advance given by the user",
+                 "How frequently the Purchases are being made, score between 0 and 1 (1 = frequently purchased, 0 = not frequently purchased)",
+                 "How frequently Purchases are happening in one-go (1 = frequently purchased, 0 = not frequently purchased)",
+                 "How frequently purchases in installments are being done (1 = frequently done, 0 = not frequently done)",
+                 "How frequently the cash in advance being paid",
+                 "Number of Transactions made with Cash in Advanced",
+                 "Number of purchase transactions made",
+                 "Limit of Credit Card for user",
+                 "Amount of Payment done by user",
+                 "Minimum amount of payments made by user",
+                 "Percent of full payment paid by user",
+                 "Tenure of credit card service for user")
+
+data_variables <- data.frame(Variables = Variables, Description = Description)
+data_variables
+
+```
+
+**2.3 DATA EXPLORATION**
+
+```{r}
+
+glimpse(df)
+
+```
+*Checking Missing Values**
+```{r}
+
+colSums(is.na(df))
+
+```
+*We could see 1 missing value in "CREDIT_LIMIT" and 313 missing value in "MINIMUM_PAYMENTS"*
+
+```{r}
+
+summary(df)
+
+```
+
+**3. DATA CLEANING AND MANIPULATION**
+```{r}
+#Rename all variables
+df <- df %>% rename_all(str_to_sentence)
+colnames(df)
+```
+
+
+```{r}
+
+#Removal of null values
+df <- df %>% 
+  na.omit()
+nrow(df)
+
+```
+
+**4. EXPLORATORY DATA ANALYSIS**
+**4.1 Histogram**
+```{r}
+
+df_hist <- df %>% 
+  pivot_longer(c(1:17), 
+               names_to = "my.variable", 
+               values_to = "my.value")
+
+# graphs
+
+ggplot(df_hist, aes(x = my.value, fill = my.variable)) +
+  geom_histogram(color = "black") +
+  facet_wrap(~my.variable, scale = "free") +
+  theme_minimal() +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 45),
+        plot.title = element_text(face = "bold", hjust = 0.5),
+        plot.subtitle = element_text(hjust = 0.5, face = "bold")) +
+  labs(title = "Variable Distribution Analysis",
+       subtitle = "by Histogram")
+
+```
+*Looking at the histogram many columns are skewed and having large values. we decided to standardize in the later section*
+
+
+**4.2 Correlation Check**
+
+```{r}
+#install.packages("corrplot")
+
+df_corr <- cor(df, method = "spearman")
+corrplot(df_corr, type = "lower", 
+         method = "number",
+         pch = 20, 
+         tl.cex = 0.6,
+         tl.col = "Red",
+         number.cex = 0.6)
+
+
+```
+
+*Correlation table*
+```{r}
+
+df_corr %>%
+  round(2) 
+
+```
+
+*From the correlation plot and table we get the relationship between variables. Correlated variables with the higher correlation level as 80%, will be removed since they are redundant variables*
+```{r}
+
+# install.packages("caret")
+# library(caret)
+
+correlated_vars <- caret::findCorrelation(x = df_corr,
+                                          names = T,    # display detect variable names
+                                          cutoff = 0.80)
+
+correlated_vars
+
+```
+*The above variables are the correlated variables, hence will be removed.*
+
+
+```{r}
+
+df <- df %>%
+  select(-one_of(correlated_vars))
+
+
+names(df)
+
+```
+*The Total number of variables is reduced from 17 to 10 only. The other 7 highly correlated variables were removed*
+
+
+**5. PCA (PRINCIPAL COMPONENT ANALYSIS)**
+
+*Before proceeding to PCA, we are planned to standardize the data, by which the variables with different units are scaled down between -1 to 1.*
+
+```{r}
+
+#scaling the data
+df_scale <- scale(df)
+head(df_scale)
+
+```
+*Let's plot Scree Plot to find the components that explains the most variation*
+
+```{r}
+
+pca <- princomp(df_scale)
+summary(pca)
+
+```
+```{r}
+
+pca$loadings[,1:5]
+
+```
+
+
+```{r}
+
+fviz_screeplot(pca, addlabels = T, ylim = c(0,30), barfill = "orange", barcolor = "black") + 
+  labs(title = "SCREE PLOT") + theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+```
+*Looking at the scree plot, we could see that the first two components explain about 40.2% of variation and they will be used to construct the axes of PCA factor map.*
+
+```{r}
+
+var_exp <- pca$sdev^2 / sum(pca$sdev^2)
+
+qplot(c(1:10), var_exp) + geom_line() + xlab("Dimensions") + 
+  ylab("Variance Explained") + ggtitle("Scree Plot") + ylim(0, 1)
+
+```
+
+
+```{r}
+
+dim1 <- fviz_contrib(pca, choice = "var", axes = 1, top = 10)
+dim2 <- fviz_contrib(pca, choice = "var", axes = 2, top = 10)
+
+
+pca_fact <- fviz_pca_var(pca, repel = T, col.var = "contrib", 
+                         gradient.cols = c("red1", "green", "blue"))+
+  labs(title = "Factor Map: Variable - PCA") +
+  theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+
+pg <- plot_grid(dim1, dim2)
+plot_grid(pca_fact, cols = 1)
+
+```
+*The important variables in the datasets that explain many of the variation are purchases, cash_advance_trx, payments, and credit limit.*
+
+*These variables are the closest variables to the circumference of the correlation circle which indicating that they have a high cosine-square level and are well represented by the first two principal components (Dim1 and Dim2). These variables also have high contribution level compared to other variables, which means they are important variables in contributing to the factor map.*
+
+
+**6. CLUSTERING**
+
+**NULL HYPOTHESIS** - The dataset is uniformly distributed, indicating no meaningful order
+
+*We are using Hopkins Statistics Method to test the spatial randomness of the data.*
+
+```{r}
+
+set.seed(123)
+
+hopkins(df_scale, m = nrow(df_scale)-1)
+
+```
+*Since Hopkins Statistics is close to 1, we are rejecting the null hypothesis, hence credit card dataset is significantly a clusterable data.*
+
+
+
+**6.1 K-Means Clustering**
+
+**Elbow Method**
+```{r}
+
+fviz_nbclust(df_scale, kmeans, method = 'wss')
+
+```
+*The kmeans-wss Elbow method suggests 2 as the optimal K as the rate of WSS reduction become slower in second K.*
+
+
+**Silhouette Method**
+```{r}
+
+fviz_nbclust(df_scale, kmeans, method = 'silhouette')
+
+```
+*Silhouette method suggests the same, that 2 as the optimal cluster(K).*
+
+```{r}
+
+# k-means clustering
+
+hk <- hkmeans(df_scale, k = 2, hc.metric = "manhattan",
+                 hc.method = "average",  km.algorithm = "Hartigan-Wong")
+
+names(hk)
+
+```
+
+```{r}
+
+hk$size
+
+```
+
+```{r}
+
+hk_cluster <- fviz_cluster(hk,
+                           palette = "jco",
+                           geom = "point",
+                           alpha = 0.5) 
+  
+hk_cluster + theme_classic() +  theme(plot.title = element_text(hjust = 0.5, face = "bold"),
+        plot.subtitle = element_text(hjust = 0.5)) + labs(title = "K-means Clustering Results",
+       subtitle = "Hartigan-Wong algorithm + Euclidean + ward.D2 + K = 6")
+
+```
+
+```{r}
+
+hk_radar <- cbind(as.data.frame(df_scale),
+               cluster = hk$cluster) %>% 
+  mutate(cluster = as.factor(cluster)) %>% 
+  relocate(cluster, .before = Balance_frequency)
+
+ggRadar(hk_radar, aes(group = cluster),
+        size = 1, 
+        rescale = F,
+        use.label = F) + 
+  theme_bw() +
+  labs(title = "Radar plot") +
+  facet_wrap(~cluster) 
+
+```
+
+**Cluster 1: Less-active user.** Most of the credit card users from this cluster use their credit card in an very infrequency manner.
+
+**Cluster 2: Active-user.** These credit card users are actively using their credit card to make purchases. One off purchases is more popular than installment purchases.
+
+
+
+**Clustering Large Application (CLARA)**
+```{r}
+
+clara2 <- eclust(df_scale, 
+                    FUNcluster = "clara",
+                    k = 2,
+                    graph = F)
+
+clara3 <- eclust(df_scale, 
+                    FUNcluster = "clara",
+                    k = 3,
+                    graph = F)
+
+clara4 <- eclust(df_scale, 
+                    FUNcluster = "clara",
+                    k = 4,
+                    graph = F)
+
+clara5 <- eclust(df_scale, 
+                    FUNcluster = "clara",
+                    k = 5,
+                    graph = F)
+
+clara6 <- eclust(df_scale, 
+                    FUNcluster = "clara",
+                    k = 6,
+                    graph = F)
+
+clara7 <- eclust(df_scale, 
+                    FUNcluster = "clara",
+                    k = 7,
+                    graph = F)
+
+
+f2 <- fviz_cluster(clara2, show.clust.cent = F, geom = "point", alpha = 0.5, palette = "jco") + 
+  theme_classic() + labs(title = "Cluster plot (K = 2)")
+
+f3 <- fviz_cluster(clara3, show.clust.cent = F, geom = "point", alpha = 0.5, palette = "jco") + 
+  theme_classic() + labs(title = "Cluster plot (K = 3)")
+
+f4 <- fviz_cluster(clara4, show.clust.cent = F, geom = "point", alpha = 0.5, palette = "jco") + 
+  theme_classic() + labs(title = "Cluster plot (K = 4)")
+
+f5 <- fviz_cluster(clara5, show.clust.cent = F, geom = "point", alpha = 0.5, palette = "jco") + 
+  theme_classic() + labs(title = "Cluster plot (K = 5)")
+
+f6 <- fviz_cluster(clara6, show.clust.cent = F, geom = "point", alpha = 0.5, palette = "jco") + 
+  theme_classic() + labs(title = "Cluster plot (K = 6)")
+
+f7 <- fviz_cluster(clara7, show.clust.cent = F, geom = "point", alpha = 0.5, palette = "jco") + 
+  theme_classic() + labs(title = "Cluster plot (K = 7)")
+
+plot_grid(f2, f3, f4, f5, f6, f7, ncol = 3, nrow = 2)
+
+```
+*From the above visualization, we can see how the data partitions change (or added) when K is increased. Let's see the silhouette width of each observation in each k.*
+
+```{r}
+
+f_2 <- fviz_silhouette(clara2, palette = "jco")
+f_3 <- fviz_silhouette(clara3, palette = "jco")
+f_4 <- fviz_silhouette(clara3, palette = "jco")
+f_5 <- fviz_silhouette(clara3, palette = "jco")
+f_6 <- fviz_silhouette(clara3, palette = "jco")
+f_7 <- fviz_silhouette(clara3, palette = "jco")
+
+```
+
+
+
+```{r}
+
+plot_grid(f_2, f_3, f_4, f_5, f_6, f_7, ncol = 3, nrow = 2)
+
+```
+*The line in the middle of the graph is the overall average silhouette width of each k, the higher silhouette width, the better the quality of a clustering or an observation.*
+
+*In above plots, it can be interpreted this way:*
+
+*Observations with a large Silhouette value are very well clustered*
+*Observations with a small silhouette value means they lies between two clusters*
+*Observations with a negative Silhouette are probably assigned to the wrong cluster. However, negative values may be unavoidable.*
+
+*We are using elbow and silhouette method to choose the optimal clusters(K)*
+
+**CLARA - Elbow method**
+```{r}
+
+fviz_nbclust(df_scale, clara, method = "wss")
+
+```
+*In the above Total WSS graph, the optimal K can be either 5 or 6.*
+
+**Silhouette Method**
+```{r}
+
+fviz_nbclust(df_scale, FUNcluster = clara, method = "silhouette")
+
+```
+*The silhouette method suggests 4 as the optimal number of K for clustering because this k has the highest average silhouette width.*
+
+*Therefore, I will be taking 5 as the optimal number of cluster for CLARA because average silhouette width of 5 is not too far from 4 and it is what suggested by both the methods. *
+
+
+```{r}
+
+# setting up data frame
+clara_k6 <- cbind(as.data.frame(df_scale), 
+                  cluster = clara5$clustering) %>%  
+  mutate(cluster = as.factor(cluster)) %>% 
+  relocate(cluster, .before = Balance_frequency)
+
+
+# plot
+ggRadar(clara_k6, aes(group = cluster), size = 1, use.label = F,  rescale = F) +
+  theme_bw() + labs(title = "Radar plot") +  facet_wrap(~cluster) + 
+  theme(legend.position = "none", axis.text.x = element_text(size = 7), 
+        axis.text.y = element_blank(), axis.ticks.y = element_blank()) 
+
+```
+*Five groups of credit card users have been identified:*
+
+*Cluster 1: Infrequent User, the credit card users in this cluster do not like to use credit card that much, they do use occasionally, however they are less active compared to users in other clusters.*
+
+*Cluster 2: One-off Purchasers, credit card users in this group prefer to use credit card for one-off purchase and less prefer to use it to make installment purchase.*
+
+*Cluster 3: Installment Purchasers, credit card users in this group love to use credit card to make installment purchases.*
+
+*Cluster 4: Max Payers, users from this group have zero level “Balance_frequency” which is a variable detecting their activities with the credit card company. Users in this group also has a high level of percentage of full-payment. They prefer to pay money they owe in full. It may explains why they have low level of “Balance frequency”.*
+
+*Cluster 5: Active Revolvers, users from this group are characterized by very high level of credit card activities in term of dollars scale. The variables “Purchases” and “Payments” were in dollars unit. Users in this group spend bigger amount of money in their purchases, they have also the highest level of cash in advance transaction, they make repayment back in big amount, and they have a low level of full payment (percentage). It seems like they do not like to pay back in full.*
+
+**FUZZY clustering**
+
+```{r}
+
+fz <- fanny(df_scale, k = 2, 
+                   metric = "euclidean", 
+                   stand = FALSE, 
+                   memb.exp = 1.05)
+
+
+# Showing the member coefficient
+head(fz$membership, 10)
+
+```
+
+
+```{r}
+
+# Show the cluster that each observation belongs to (extracting the first 10 observations)
+head(fz$clustering, 10)
+
+```
+
+
+```{r}
+
+fviz_cluster(fz, geom = "point", repel = T, palette = "jco")
+
+```
+
+
+```{r}
+
+fviz_silhouette(fz, palette = "jco")
+
+```
+*According to the above silhouette plot, there are a lot of noises in figure 2 and 3.*
+
+```{r}
+
+# Radar plot 
+
+fz_radar <- cbind(as.data.frame(df_scale), cluster = fz$clustering) %>%  
+  mutate(cluster = as.factor(cluster)) %>% 
+  relocate(cluster, .before = Balance_frequency)
+
+
+ggRadar(fz_radar, aes(group = cluster), size = 1, use.label = T, rescale = F) +  
+  theme_bw() + labs(title = "Radar plot") + facet_wrap(~ cluster)
+
+```
+*Fuzzy clustering with 2 clusters have the similar characteristics as K-means clustering, which is having 2 clusters that group users into a group of less-active user and a group of active users. Some differences appear are:*
+
+*Cluster 1: The preference of using cash in advance is more obvious than the cluster 1 in K-means in previous section.*
+
+*Cluster 2: Fuzzy clustering indicates that installment-purchases is more popular than one-off purchases. However, though both are falling the same category of “purchases”. Important similarity is still preserved, users in this group is also prefer to make full repayment, and less prefer for minimum payments.*
+
+
+**MODEL-BASED CLUSTERING**
+```{r}
+
+mbc <- Mclust(df_scale)
+summary(mbc)
+
+```
+
+
+```{r}
+
+mbc1 <-  fviz_mclust(mbc, what = "classification", geom = "point", alpha = 0.1)
+
+mbc2 <- fviz_mclust(mbc, what = "BIC")
+
+mbc3 <- fviz_mclust(mbc, what = "uncertainty") + labs(subtitle = "Larger symbols indicate the more uncertain observations.")
+
+pg1 <- plot_grid(mbc1, mbc2)
+
+plot_grid(pg1, mbc3, nrow = 2)
+
+```
+
+
+```{r}
+
+# Visualizing the clustering result using Radar plot
+mbc_radar <- cbind(as.data.frame(df_scale), 
+                  cluster = mbc$classification) %>%  
+  mutate(cluster = as.factor(cluster)) %>% 
+  relocate(cluster, .before = Balance_frequency)
+
+# Radar plot 
+
+ggRadar(mbc_radar, aes(group = cluster),
+        size = 1,
+        use.label = T, 
+        rescale = F) +        
+  theme_bw() +
+  labs(title = "Radar plot") +
+  facet_wrap(~cluster) +
+  theme(plot.margin = unit(c(0.1, 0.1, 0.1, 0.1), "mm"))
+
+```
+*Model-based clustering identified 8 groups of cluster with following characterization:*
+
+*Based on the median of each cluster:*
+
+*Cluster 1: Less active user. They don’t like to use credit card that much, but slightly more prefer to use cash-in-advance.*
+
+*Cluster 2: Less active user. They don’t like to use credit card that much, but slightly more prefer to use credit card to make purchases, especially installment purchases.*
+
+*Cluster 3: Revolvers, they prefer to make minimum payment back to credit card company, they prefer to make expensive purchases and therefore they have higher credit limit and make bigger payment back to credit card company, but they don’t like to make full-payment back.*
+
+*Cluster 4: Less active user, but they prefer to make full payment and they very low tenure.*
+
+*Cluster 5: Active card users, they buy expensive products and make big payment back to credit card company. Sometime they prefer full payment, sometime they pay minimum payments.*
+
+*Cluster 6: Max Payers, but they are less active with zero level of tenure.*
+
+*Cluster 7: Revolvers, they less active revolvers who prefer to make minimum payment. They spend small money for purchases on cheaper products.*
+
+*Cluster 8: Max Payer, but they are active with high level of tenure.*
