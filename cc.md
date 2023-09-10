@@ -1,8 +1,6 @@
 Credit Card Clustering for Market Segmentation
 ================
-Kar Ng
-2022-05
-
+Mothi Gowtham Ashok Kumar 
 -   [1 SUMMARY](#1-summary)
 -   [2 R PACKAGES](#2-r-packages)
 -   [3 INTRODUCTION](#3-introduction)
