@@ -2816,7 +2816,8 @@ corrplot(cor_cc, type = "lower",
          pch = 20)
 ```
 
-![](cc_files/figure-gfm/unnamed-chunk-17-1.png)<!-- -->
+![](![image](https://github.com/Mothigowtham/Market-segmentation-through-credit-card-analysis-using-R/assets/83273330/07a11777-fc6e-44b1-ade2-d17e8c9661b8)
+)<!-- -->
 
 Construct a correlation table to look at relevant correlation
 statistics:
