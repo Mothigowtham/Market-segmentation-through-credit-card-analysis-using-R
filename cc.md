@@ -1,4 +1,4 @@
-Credit Card Clustering for Market Segmentation
+Utilizing Clustering Algorithms to Perform Market Segmentation through Credit Card Analysis
 ================
 Mothi Gowtham Ashok Kumar 
 -   [1 SUMMARY](#1-summary)
@@ -27,10 +27,6 @@ Mothi Gowtham Ashok Kumar
     -   [7.6 DBSCAN](#76-dbscan)
 -   [8 CONCLUSION](#8-conclusion)
 -   [9 REFERENCE](#9-reference)
-
-------------------------------------------------------------------------
-
-![](https://raw.githubusercontent.com/KAR-NG/cc_cluster/main/pic2_thumbnail.png)
 
 ------------------------------------------------------------------------
 
@@ -5334,25 +5330,5 @@ purchases than cluster 6.
 If smaller amount of clusters is interested, the next best algorithm
 will be CLARA which suggests 5 groups of different credit card users,
 followed by 2 groups suggested by HKmeans and Fuzzy.
+------------------------------------------------------------------------
 
-*Thank you for Reading*
-
-## 9 REFERENCE
-
-Arjun Bhasin 2018, *Credit card Dataset for Clustering*, viewed 10 May
-2022, <https://www.kaggle.com/datasets/arjunbhasin2013/ccdata>
-
-Alboukadel Kassambara 2017, *Practical Guide to Cluster Analysis in R*,
-Multivariate Analysis 1, Edition 1, sthda.com
-
-Clustering and dimensionality reduction techniques on the Berlin Airbnb
-data and the problem of mixed data (n.d.),viewed 15 May 2022
-<https://rstudio-pubs-static.s3.amazonaws.com/579984_6b9efbf84ee24f00985c29e24265d2ba.html>
-
-Jenny Listman 2019, *Customer Segmentation / K Means Clustering*, viewed
-14 May 2022,
-<https://www.kaggle.com/code/jennylistman/customer-segmentation-k-means-clustering>
-
-Matt.0 2019, *10 Tips for Choosing the Optimal Number of Clusters*,
-viewed 12 May 2022,
-<https://towardsdatascience.com/10-tips-for-choosing-the-optimal-number-of-clusters-277e93d72d92>
